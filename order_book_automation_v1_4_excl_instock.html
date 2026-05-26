@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>2-Week Order Book Automation – Viva Nylons</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:          #0f1117;
+  --surface:     #161b27;
+  --surface-2:   #1d2333;
+  --surface-3:   #242b3d;
+  --border:      #2c3448;
+  --border-hi:   #3d4863;
+  --text:        #dce3f0;
+  --text-dim:    #7a8aaa;
+  --text-xdim:   #4a5570;
+  --accent:      #3b82f6;
+  --accent-dim:  #1d3d72;
+  --success:     #22c55e;
+  --success-dim: #14532d;
+  --warn:        #f59e0b;
+  --danger:      #ef4444;
+  --info:        #60a5fa;
+  --radius:      10px;
+  --radius-sm:   6px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ─── LAYOUT ─────────────────────────────────────────────── */
+.app {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 40px 24px 60px;
+}
+
+/* ─── HEADER ─────────────────────────────────────────────── */
+header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 40px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--border);
+}
+
+.header-left { display: flex; align-items: center; gap: 16px; }
+
+.header-icon {
+  width: 44px; height: 44px;
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.header-icon svg { width: 22px; height: 22px; color: var(--accent); }
+
+.header-title { font-size: 18px; font-weight: 600; color: var(--text); letter-spacing: -0.3px; }
+
+.header-sub {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 3px;
+  letter-spacing: 0.3px;
+}
+
+.version-badge {
+  font-size: 11px;
+  font-family: 'DM Mono', monospace;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  padding: 3px 9px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+/* ─── SECTION ────────────────────────────────────────────── */
+.section { margin-bottom: 20px; }
+
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.step-num {
+  width: 22px; height: 22px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+/* ─── CARD ───────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+/* ─── UPLOAD GRID ────────────────────────────────────────── */
+.upload-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.upload-zone {
+  background: var(--surface-2);
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-sm);
+  padding: 18px;
+  transition: border-color 0.2s, background 0.2s;
+  cursor: pointer;
+  position: relative;
+}
+
+.upload-zone:hover { border-color: var(--border-hi); background: var(--surface-3); }
+.upload-zone.loaded { border-style: solid; border-color: var(--success); background: #0f2920; }
+
+.upload-zone-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.upload-icon {
+  width: 30px; height: 30px;
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+}
+
+.upload-icon svg { width: 15px; height: 15px; color: var(--text-dim); }
+.upload-zone.loaded .upload-icon { background: var(--success-dim); border-color: var(--success); }
+.upload-zone.loaded .upload-icon svg { color: var(--success); }
+
+.upload-label { font-size: 13px; font-weight: 500; color: var(--text); }
+.upload-hint { font-size: 11px; color: var(--text-dim); margin-top: 1px; }
+
+input[type=file] {
+  position: absolute; inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%; height: 100%;
+}
+
+.upload-status {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+  font-family: 'DM Mono', monospace;
+}
+
+.upload-status.ok { color: var(--success); }
+.upload-status.err { color: var(--danger); }
+.upload-status .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+/* ─── OPTIONS ROW ────────────────────────────────────────── */
+.options-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+.field { display: flex; flex-direction: column; gap: 6px; }
+
+.field-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-dim);
+}
+
+input[type=date],
+input[type=number],
+select {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+  font-family: 'DM Sans', sans-serif;
+  outline: none;
+  transition: border-color 0.15s;
+  appearance: none;
+}
+
+input[type=date]:focus,
+input[type=number]:focus,
+select:focus { border-color: var(--accent); }
+
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237a8aaa' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 30px;
+  cursor: pointer;
+}
+
+.field-hint {
+  font-size: 11px;
+  color: var(--text-xdim);
+  line-height: 1.5;
+}
+
+/* ─── ACTION BAR ─────────────────────────────────────────── */
+.action-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover:not(:disabled) { background: #2563eb; }
+.btn-primary:disabled { background: var(--surface-3); color: var(--text-xdim); cursor: not-allowed; }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover:not(:disabled) { background: var(--surface-3); color: var(--text); border-color: var(--border-hi); }
+.btn-ghost:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ─── METRICS ────────────────────────────────────────────── */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.metric-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  transition: border-color 0.2s;
+}
+
+.metric-card:hover { border-color: var(--border-hi); }
+
+.metric-value {
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.metric-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-dim);
+  margin-top: 5px;
+}
+
+/* ─── LOG ────────────────────────────────────────────────── */
+.log-panel {
+  margin-top: 16px;
+  background: #080a0f;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.log-header {
+  padding: 8px 14px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.log-header-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.log-header-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-dim); }
+
+.log-body {
+  padding: 10px 14px;
+  font-family: 'DM Mono', monospace;
+  font-size: 11.5px;
+  max-height: 180px;
+  overflow-y: auto;
+  line-height: 1.7;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.log-line { color: var(--text-dim); }
+.log-line.ok   { color: var(--success); }
+.log-line.err  { color: var(--danger); }
+.log-line.info { color: var(--info); }
+
+/* ─── DIVIDER ────────────────────────────────────────────── */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 24px 0;
+}
+
+/* ─── FOOTER ─────────────────────────────────────────────── */
+footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+  margin-top: 32px;
+}
+
+.footer-left { font-size: 12px; color: var(--text-xdim); }
+.footer-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-xdim);
+}
+
+.privacy-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.privacy-badge svg { width: 11px; height: 11px; color: var(--success); }
+
+/* ─── RESPONSIVE ─────────────────────────────────────────── */
+@media (max-width: 680px) {
+  .upload-grid, .options-row, .metrics-grid { grid-template-columns: 1fr 1fr; }
+  .header { flex-direction: column; }
+}
+
+@media (max-width: 440px) {
+  .upload-grid, .options-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-left">
+      <div class="header-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+      </div>
+      <div>
+        <div class="header-title">2-Week Order Book Automation</div>
+        <div class="header-sub">Viva Nylons Ltd &nbsp;·&nbsp; Production Control</div>
+      </div>
+    </div>
+    <span class="version-badge">v1.4 · excl. in-stock lines</span>
+  </header>
+
+  <!-- STEP 1: UPLOAD -->
+  <div class="section">
+    <div class="section-label">
+      <div class="step-num">1</div>
+      <span class="section-title">Upload source files</span>
+    </div>
+    <div class="card">
+      <div class="upload-grid">
+
+        <div class="upload-zone" id="card-orderbook">
+          <input type="file" id="file-orderbook" accept=".xlsx,.xls">
+          <div class="upload-zone-header">
+            <div class="upload-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+            </div>
+            <div>
+              <div class="upload-label">Customer Order Book</div>
+              <div class="upload-hint">.xlsx / .xls</div>
+            </div>
+          </div>
+          <div class="upload-status" id="status-orderbook">
+            <span class="dot"></span>
+            <span id="name-orderbook">No file selected</span>
+          </div>
+        </div>
+
+        <div class="upload-zone" id="card-jobs">
+          <input type="file" id="file-jobs" accept=".csv,.tsv,.txt">
+          <div class="upload-zone-header">
+            <div class="upload-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 10h16M4 14h16M4 18h7"/>
+              </svg>
+            </div>
+            <div>
+              <div class="upload-label">Job Orders</div>
+              <div class="upload-hint">.csv / .tsv / .txt</div>
+            </div>
+          </div>
+          <div class="upload-status" id="status-jobs">
+            <span class="dot"></span>
+            <span id="name-jobs">No file selected</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: OPTIONS -->
+  <div class="section">
+    <div class="section-label">
+      <div class="step-num">2</div>
+      <span class="section-title">Report options</span>
+    </div>
+    <div class="card">
+      <div class="options-row">
+        <div class="field">
+          <label class="field-label" for="report-date">Report date</label>
+          <input type="date" id="report-date">
+        </div>
+        <div class="field">
+          <label class="field-label" for="window-days">Window (days)</label>
+          <input type="number" id="window-days" value="14" min="1" max="60">
+        </div>
+        <div class="field">
+          <label class="field-label" for="day-label">Day label</label>
+          <select id="day-label">
+            <option value="auto">Auto from date</option>
+            <option value="MONDAY">Monday</option>
+            <option value="TUESDAY">Tuesday</option>
+            <option value="WEDNESDAY">Wednesday</option>
+            <option value="THURSDAY">Thursday</option>
+            <option value="FRIDAY">Friday</option>
+          </select>
+        </div>
+      </div>
+      <p class="field-hint" style="margin-top:14px;">
+        Window filters Due Dates between the report date and report date + window days. Items past their due date are always included.
+      </p>
+    </div>
+  </div>
+
+  <!-- STEP 3: GENERATE -->
+  <div class="section">
+    <div class="section-label">
+      <div class="step-num">3</div>
+      <span class="section-title">Generate</span>
+    </div>
+    <div class="card">
+
+      <div class="action-bar">
+        <button class="btn btn-primary" id="btn-generate" disabled>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+          Generate workbook
+        </button>
+        <button class="btn btn-ghost" id="btn-preview" disabled>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+          </svg>
+          Preview counts
+        </button>
+      </div>
+
+      <!-- METRICS (hidden until preview) -->
+      <div class="metrics-grid" id="preview" style="display:none;">
+        <div class="metric-card"><div class="metric-value" id="m-tubes">—</div><div class="metric-label">Tubes</div></div>
+        <div class="metric-card"><div class="metric-value" id="m-rods">—</div><div class="metric-label">Rods</div></div>
+        <div class="metric-card"><div class="metric-value" id="m-plates">—</div><div class="metric-label">Plates</div></div>
+        <div class="metric-card"><div class="metric-value" id="m-strout">—</div><div class="metric-label">Str-Out</div></div>
+        <div class="metric-card"><div class="metric-value" id="m-pu">—</div><div class="metric-label">PU</div></div>
+        <div class="metric-card"><div class="metric-value" id="m-chemicals">—</div><div class="metric-label">Chemicals</div></div>
+        <div class="metric-card"><div class="metric-value" id="m-chocks">—</div><div class="metric-label">Chocks</div></div>
+        <div class="metric-card"><div class="metric-value" id="m-total">—</div><div class="metric-label">Total lines</div></div>
+      </div>
+
+      <!-- LOG -->
+      <div class="log-panel">
+        <div class="log-header">
+          <div class="log-header-dot"></div>
+          <span class="log-header-label">Activity log</span>
+        </div>
+        <div class="log-body" id="log"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <span class="footer-left">© Abdul Sarang · Viva Nylons Ltd</span>
+    <span class="privacy-badge">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+      </svg>
+      Runs entirely in your browser — no data leaves your machine
+    </span>
+  </footer>
+
+</div>
+
+<script>
+'use strict';
+
+// ============================================================================
+// State
+// ============================================================================
+const state = {
+  orderBook: null,   // array of order rows
+  jobs: null,        // array of job rows
+  jobLookup: null,   // Map: itemCode -> array of {vNumber, endDate, jobDate, status}
+};
+
+// ============================================================================
+// Utilities
+// ============================================================================
+function log(msg, kind='') {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = 'log-line' + (kind ? ' ' + kind : '');
+  const ts = new Date().toLocaleTimeString();
+  line.textContent = `[${ts}] ${msg}`;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+function setReportDateDefault() {
+  const d = new Date();
+  const iso = d.toISOString().slice(0, 10);
+  document.getElementById('report-date').value = iso;
+}
+
+function dayName(date) {
+  return ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'][date.getDay()];
+}
+
+// Excel serial date <-> JS Date
+function parseDate(v) {
+  if (v == null || v === '') return null;
+  if (v instanceof Date) return isNaN(v) ? null : v;
+  if (typeof v === 'number') {
+    const d = XLSX.SSF.parse_date_code(v);
+    if (!d) return null;
+    return new Date(Date.UTC(d.y, d.m - 1, d.d, d.H || 0, d.M || 0, Math.floor(d.S || 0)));
+  }
+  if (typeof v === 'string') {
+    const s = v.trim();
+    if (!s) return null;
+    let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m) return new Date(Date.UTC(+m[3], +m[2]-1, +m[1]));
+    m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) return new Date(Date.UTC(+m[1], +m[2]-1, +m[3]));
+    const d = new Date(s);
+    return isNaN(d) ? null : d;
+  }
+  return null;
+}
+
+function dateOnly(d) {
+  if (!d) return null;
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
+function dateKey(d) {
+  if (!d) return '';
+  return d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0') + '-' + String(d.getUTCDate()).padStart(2,'0');
+}
+
+function normKey(k) {
+  return String(k || '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+function field(row, name) {
+  if (!row) return null;
+  if (Object.prototype.hasOwnProperty.call(row, name)) return row[name];
+  const target = normKey(name);
+  for (const key of Object.keys(row)) {
+    if (normKey(key) === target) return row[key];
+  }
+  return null;
+}
+
+function numField(row, name) {
+  const value = field(row, name);
+  if (value == null || value === '') return 0;
+  const n = typeof value === 'number' ? value : Number(String(value).replace(/,/g, '').trim());
+  return Number.isFinite(n) ? n : 0;
+}
+
+function formatVNumber(job) {
+  if (!job) return '';
+  const s = String(job).trim();
+  const m = s.match(/^V0*(\d+)$/i);
+  if (m) return 'V' + m[1];
+  return s;
+}
+
+// ============================================================================
+// File parsing
+// ============================================================================
+async function readFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+async function parseOrderBook(file) {
+  const buf = await readFile(file);
+  const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rowsRaw = XLSX.utils.sheet_to_json(ws, { defval: null });
+  return rowsRaw;
+}
+
+async function parseJobOrders(file) {
+  const buf = await readFile(file);
+  const u8 = new Uint8Array(buf);
+  let text;
+  if (u8.length >= 2 && u8[0] === 0xFF && u8[1] === 0xFE) {
+    text = new TextDecoder('utf-16le').decode(buf);
+  } else if (u8.length >= 2 && u8[0] === 0xFE && u8[1] === 0xFF) {
+    text = new TextDecoder('utf-16be').decode(buf);
+  } else {
+    text = new TextDecoder('utf-8').decode(buf);
+  }
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+
+  const firstLine = text.split(/\r?\n/, 1)[0];
+  const delim = firstLine.includes('\t') ? '\t' : ',';
+
+  const wb = XLSX.read(text, { type: 'string', FS: delim, raw: true });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { defval: null, raw: true });
+  return rows;
+}
+
+// ============================================================================
+// Build job lookup index
+// ============================================================================
+function buildJobIndex(jobs) {
+  const idx = new Map();
+  for (const j of jobs) {
+    const item = (j['Item'] || '').toString().trim();
+    if (!item) continue;
+    const vNum = formatVNumber(j['Job']);
+    const endDate = parseDate(j['End Date']);
+    const jobDate = parseDate(j['Job Date']);
+    const lastTranDate = parseDate(j['Last Tran Date']);
+    const status = (j['Status'] || '').toString().trim();
+    if (!idx.has(item)) idx.set(item, []);
+    idx.get(item).push({ vNumber: vNum, endDate, jobDate, lastTranDate, status });
+  }
+  for (const list of idx.values()) {
+    list.sort((a, b) => {
+      const ax = a.endDate ? a.endDate.getTime() : Infinity;
+      const bx = b.endDate ? b.endDate.getTime() : Infinity;
+      return ax - bx;
+    });
+  }
+  return idx;
+}
+
+function findJobMatch(idx, item, dueDate, used) {
+  if (!item) return null;
+  const list = idx.get(item.toString().trim());
+  if (!list || !list.length) return null;
+  const dueKey = dateKey(dateOnly(dueDate));
+  for (const j of list) {
+    const k = j.endDate ? dateKey(dateOnly(j.endDate)) : '';
+    if (k && k === dueKey && !used.has(j.vNumber)) {
+      used.add(j.vNumber);
+      return j;
+    }
+  }
+  let best = null, bestDiff = Infinity;
+  for (const j of list) {
+    if (used.has(j.vNumber)) continue;
+    if (!j.endDate) continue;
+    const diff = Math.abs(j.endDate.getTime() - (dueDate ? dueDate.getTime() : 0));
+    if (diff < bestDiff) { bestDiff = diff; best = j; }
+  }
+  if (best) { used.add(best.vNumber); return best; }
+  for (const j of list) {
+    if (!used.has(j.vNumber)) { used.add(j.vNumber); return j; }
+  }
+  return list[0];
+}
+
+// ============================================================================
+// Categorisation
+// ============================================================================
+function categoryFor(profile, item) {
+  const p = (profile || '').toString().trim().toUpperCase();
+  const i = (item || '').toString().trim().toUpperCase();
+
+  if (i.includes('GYM')) return 'CHOCKS';
+  if (i.startsWith('NYLABATCH')) return 'CHEMICALS';
+  if (/^(SU\d|FL-|10[0-5]|130)/.test(i)) return 'PU';
+
+  if (p === 'TU' || p === 'CT') return 'TUBES';
+  if (p === 'RD' || p === 'CU') return 'RODS';
+  if (p === 'EU') return 'PU';
+  if (p === 'PU' || p === 'PP') return 'PLATES';
+
+  return 'OTHER';
+}
+
+// ============================================================================
+// Filter & categorise
+// ============================================================================
+function buildReport(orderBook, jobs, opts) {
+  const ordered = orderBook.filter(r => {
+    const s = (r['Status'] || '').toString().trim().toLowerCase();
+    return s === 'ordered';
+  });
+
+  log(`Order book rows after filtering Status=Ordered: ${ordered.length}`, 'info');
+
+  const reportDate = parseDate(opts.reportDate);
+  const cutoff = new Date(reportDate.getTime() + opts.windowDays * 86400000);
+
+  const inWindow = ordered.filter(r => {
+    const due = parseDate(r['Due Date']);
+    if (!due) return false;
+    return dateOnly(due).getTime() <= dateOnly(cutoff).getTime();
+  });
+
+  log(`Rows due within window (≤ ${cutoff.toISOString().slice(0,10)}): ${inWindow.length}`, 'info');
+
+  // Exclude lines where on hand fully covers qty ordered (already in stock)
+  const notInStock = inWindow.filter(r => {
+    const qty = numField(r, 'Qty Ordered');
+    const onHand = numField(r, 'On Hand');
+    return !(qty > 0 && onHand >= qty);
+  });
+  const skippedCount = inWindow.length - notInStock.length;
+  if (skippedCount > 0) log(`Excluded ${skippedCount} in-stock line(s) — On Hand ≥ Qty Ordered`, 'info');
+
+  const jobIdx = buildJobIndex(jobs);
+  log(`Job index built: ${jobIdx.size} unique items`, 'info');
+
+  const used = new Set();
+  const buckets = { TUBES: [], RODS: [], PLATES: [], CHEMICALS: [], PU: [], OTHER: [], CHOCKS: [] };
+
+  notInStock.sort((a, b) => {
+    const ad = parseDate(a['Due Date']);
+    const bd = parseDate(b['Due Date']);
+    return (ad ? ad.getTime() : 0) - (bd ? bd.getTime() : 0);
+  });
+
+  for (const r of notInStock) {
+    const cat = categoryFor(r['Profile'], r['Item']);
+    const dueDate = parseDate(r['Due Date']);
+    const jobMatch = findJobMatch(jobIdx, r['Item'], dueDate, used);
+    const enriched = {
+      ...r,
+      _vNumber: jobMatch ? jobMatch.vNumber : '',
+      _lastTranDate: jobMatch ? jobMatch.lastTranDate : null,
+      _dueDate: dueDate
+    };
+    buckets[cat].push(enriched);
+  }
+
+  const strOut = { TUBES: [], RODS: [], PLATES: [] };
+  for (const cat of ['TUBES', 'RODS', 'PLATES']) {
+    for (const r of buckets[cat]) {
+      if (String(field(r, 'Item') || '').trim().toUpperCase().endsWith('-E')) {
+        strOut[cat].push(r);
+      }
+    }
+  }
+
+  return { buckets, strOut, reportDate };
+}
+
+// ============================================================================
+// Worksheet builders
+// ============================================================================
+function dateCell(d) {
+  if (!d) return null;
+  return { v: d, t: 'd' };
+}
+
+function qtyOutstanding(r) {
+  const qty = numField(r, 'Qty Ordered');
+  const shipped = numField(r, 'Qty Shipped');
+  const outstanding = qty - shipped;
+  return outstanding > 0 ? outstanding : 0;
+}
+
+function buildOrderSheet_TUBES(rows, reportDate, dayLbl) {
+  const aoa = [];
+  aoa.push(['TUBES', null, null, null, null, null, 'OUTSTANDING AS OF', dayLbl, reportDate, null, null, null, null, null]);
+  aoa.push(['TANK 1', null, null, null, null, null, 'ALL DUE THIS WEEK', null, null, null, null, null, null, null]);
+  aoa.push(['TANK2 ', null, null, null, null, null, null, null, null, null, null, null, null, null]);
+  aoa.push(['Status', 'Order', 'Line', 'Cust PO', 'Name', 'Profile', 'Item', 'Item Description', '2nd  Description', 'Qty Ordered', 'Qty Outstanding', 'Due Date', 'On Hand', 'V-Numbers']);
+  for (const r of rows) {
+    aoa.push([
+      parseDate(r['Date Created']),
+      r['Order'], r['Line'], r['Cust PO'], r['Name'], r['Profile'],
+      r['Item'], r['Item Description'], r['2nd  Description'],
+      numField(r, 'Qty Ordered'),
+      qtyOutstanding(r),
+      r._dueDate,
+      numField(r, 'On Hand'),
+      r._vNumber || ''
+    ]);
+  }
+  return aoa;
+}
+
+function buildOrderSheet_GENERIC(title, rows, reportDate, dayLbl) {
+  const aoa = [];
+  aoa.push([title, null, null, null, null, null, 'OUTSTANDING AS OF', dayLbl, reportDate, null, null, null, null, null]);
+  aoa.push([null, null, null, null, null, null, 'ALL DUE THIS WEEK', null, null, null, null, null, null, null]);
+  aoa.push([null, null, null, null, null, null, null, null, null, null, null, null, null, null]);
+  aoa.push(['Status', 'Order', 'Line', 'Cust PO', 'Name', 'Profile', 'Item', 'Item Description', '2nd  Description', 'Qty Ordered', 'Qty Outstanding', 'Due Date', 'On Hand', 'V Numbers']);
+  for (const r of rows) {
+    aoa.push([
+      parseDate(r['Date Created']),
+      r['Order'], r['Line'], r['Cust PO'], r['Name'], r['Profile'],
+      r['Item'], r['Item Description'], r['2nd  Description'],
+      numField(r, 'Qty Ordered'),
+      qtyOutstanding(r),
+      r._dueDate,
+      numField(r, 'On Hand'),
+      r._vNumber || ''
+    ]);
+  }
+  return aoa;
+}
+
+function buildSheet_CHOCKS(rows, reportDate, dayLbl) {
+  return buildOrderSheet_GENERIC('CHOCKS', rows, reportDate, dayLbl);
+}
+
+function buildSheet_STROUT(strOut, reportDate, dayLbl) {
+  const aoa = [];
+  aoa.push(['ALL STRAIGHT OUT JOBS DUE', null, null, null, null, null, 'OUTSTANDING AS OF', dayLbl, reportDate, null, null, null, null, null, null, null]);
+  for (const section of ['TUBES', 'RODS', 'PLATES']) {
+    const rows = strOut[section] || [];
+    aoa.push([section, 'STRAIGHT OUT', rows.length ? rows.length + ' LINES' : 'NO LINES', null, null, null, null, null, null, null, null, null, null, null, null, null]);
+    aoa.push(['Date Ordered', 'Order', 'Line', 'Cust PO', 'Name', 'Profile', 'Item', 'Item Description', '2nd  Description', 'Qty Ordered', 'Qty Outstanding', 'Due Date', 'On Hand', 'V Numbers', null, null]);
+    for (const r of rows) {
+      aoa.push([
+        parseDate(r['Date Created']),
+        r['Order'], r['Line'], r['Cust PO'], r['Name'], r['Profile'],
+        r['Item'], r['Item Description'], r['2nd  Description'],
+        numField(r, 'Qty Ordered'),
+        qtyOutstanding(r),
+        r._dueDate,
+        numField(r, 'On Hand'),
+        r._vNumber || '',
+        null, null
+      ]);
+    }
+    aoa.push([null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]);
+  }
+  return aoa;
+}
+
+function buildSheet_CHEMICALS(rows) {
+  const aoa = [];
+  aoa.push(['DATE ORDERED ', 'SALES ORDER', 'LINE NO.', 'PO NO.', 'COMPANY', null, 'STOCKCODE', 'DESCRIPTION', 'WIP MADE', 'QUANTITY', 'DUE DATE', 'ON HAND', 'QNY TO SHIP', 'QNY SHIPPED']);
+  for (const r of rows) {
+    aoa.push([
+      parseDate(r['Date Created']),
+      r['Order'], r['Line'], r['Cust PO'], r['Name'], '',
+      r['Item'], r['Item Description'], null,
+      numField(r, 'Qty Ordered'),
+      r._dueDate,
+      field(r, 'On Hand') != null ? numField(r, 'On Hand') : null,
+      r['Qty to Ship'] != null ? +r['Qty to Ship'] : null,
+      r['Qty Shipped'] != null ? +r['Qty Shipped'] : null,
+    ]);
+  }
+  return aoa;
+}
+
+function buildSheet_PU(rows) {
+  const aoa = [];
+  aoa.push(['date ordered', 'customer order', 'LINE NO.', 'p/o no.', 'customer name', null, 'stock code', 'Description', 'Dimensions', 'grade', 'qty ordered', 'wip', 'qty o/s', 'DATE w/o CREATED', 'due date', 'status', 'VENDOR PO', 'Mould Location in Register', 'DRW/ Mould information', 'DWG ISS.', 'SYSTEM WEIGHT EACH', 'ACTUAL WEIGHT', 'works order no.', 'TOTAL', null]);
+  for (const r of rows) {
+    const qty = numField(r, 'Qty Ordered');
+    const shipped = +r['Qty Shipped'] || 0;
+    const os = qty - shipped;
+    aoa.push([
+      parseDate(r['Date Created']),
+      r['Order'], r['Line'], r['Cust PO'], r['Name'], '',
+      r['Item'], r['Item Description'], r['2nd  Description'],
+      null,
+      qty,
+      shipped,
+      os,
+      parseDate(r['Date Created']),
+      r._dueDate,
+      'OPEN',
+      null, null, null, null, null, null, r._vNumber || '', 0, null
+    ]);
+  }
+  return aoa;
+}
+
+function buildSheet_BirdsEye() {
+  return [['Birds Eye View – manual floor-plan sheet (preserved)']];
+}
+function buildSheet_BirdsEyePU() {
+  return [['Birds Eye View (PU) – manual floor-plan sheet (preserved)']];
+}
+
+// ============================================================================
+// Styling helpers
+// ============================================================================
+const COLOUR_MAP = [
+  ['BLACK',   'FF1A1A1A', 'FFFFFFFF'],
+  ['WHITE',   'FFFFFFFF', 'FF000000'],
+  ['NATURAL', 'FFF5E6C8', 'FF000000'],
+  ['NAT',     'FFF5E6C8', 'FF000000'],
+  ['RED',     'FFE24B4A', 'FFFFFFFF'],
+  ['ORANGE',  'FFEF9F27', 'FF000000'],
+  ['YELLOW',  'FFFFE066', 'FF000000'],
+  ['GREEN',   'FF1D9E75', 'FFFFFFFF'],
+  ['BLUE',    'FF378ADD', 'FFFFFFFF'],
+  ['PURPLE',  'FF7F77DD', 'FFFFFFFF'],
+  ['PINK',    'FFED93B1', 'FF000000'],
+  ['BROWN',   'FF8B5A2B', 'FFFFFFFF'],
+  ['GREY',    'FF888780', 'FFFFFFFF'],
+  ['GRAY',    'FF888780', 'FFFFFFFF'],
+];
+
+const FILL_ORANGE = 'FFFFC58A';
+const FILL_GREEN  = 'FFA6E3C4';
+const FILL_RED    = 'FFFF8A8A';
+
+function detectColour(secondDesc) {
+  if (!secondDesc) return null;
+  const up = secondDesc.toString().toUpperCase();
+  if (/\bMOLY\b/.test(up) || up.includes('MOLY')) return { fill: 'FF1A1A1A', font: 'FFFFFFFF' };
+  for (const [word, fill, font] of COLOUR_MAP) {
+    const re = new RegExp('\\b' + word + '\\b');
+    if (re.test(up)) return { fill, font };
+  }
+  return null;
+}
+
+function isPastDue(due, today) {
+  if (!due || !today) return false;
+  return dateOnly(due).getTime() < dateOnly(today).getTime();
+}
+
+// ============================================================================
+// Main: assemble the workbook
+// ============================================================================
+function buildWorkbook(report, opts) {
+  const { buckets, strOut, reportDate } = report;
+  const dayLbl = opts.dayLabel === 'auto' ? dayName(reportDate) : opts.dayLabel;
+  const today = parseDate(opts.reportDate);
+
+  if (!window.ExcelJS) throw new Error('ExcelJS did not load. Reload the page while connected to the internet.');
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Viva Nylons Order Book Automation';
+  wb.created = new Date();
+
+  function appendSheet(name, aoa, colWidths) {
+    const ws = wb.addWorksheet(name);
+    if (colWidths) ws.columns = colWidths.map(w => ({ width: w }));
+    for (const row of aoa) ws.addRow(row);
+    ws.eachRow(row => {
+      row.eachCell({ includeEmpty: false }, cell => {
+        if (cell.value instanceof Date) cell.numFmt = 'dd/mm/yyyy';
+      });
+    });
+    return ws;
+  }
+
+  function cellBorder() {
+    return {
+      top:    { style: 'thin', color: { argb: 'FFD9E2EC' } },
+      left:   { style: 'thin', color: { argb: 'FFD9E2EC' } },
+      bottom: { style: 'thin', color: { argb: 'FFD9E2EC' } },
+      right:  { style: 'thin', color: { argb: 'FFD9E2EC' } }
+    };
+  }
+
+  function styleFullRow(row, fill, fontColour, colCount = 17) {
+    for (let c = 1; c <= colCount; c++) {
+      const cell = row.getCell(c);
+      cell.font = fontColour ? { bold: true, color: { argb: fontColour } } : { bold: true };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } };
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      cell.border = cellBorder();
+    }
+  }
+
+  function styleColumnHeader(row, colCount = 17) {
+    row.height = 24;
+    for (let c = 1; c <= colCount; c++) {
+      const cell = row.getCell(c);
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF44546A' } };
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      cell.border = cellBorder();
+    }
+  }
+
+  function colourItemCell(cell, secondDesc) {
+    const colour = detectColour(secondDesc);
+    if (!colour) return;
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colour.fill } };
+    cell.font = { color: { argb: colour.font } };
+  }
+
+  function itemColourText(r) {
+    return [r['2nd  Description'], r['Item Description']].filter(Boolean).join(' ');
+  }
+
+  function styleOrderRows(ws, rows, dataStartRow, jobNumberCol, colCount = 17) {
+    styleFullRow(ws.getRow(1), 'FFD9EAF7', null, colCount);
+    if (dataStartRow > 3) styleFullRow(ws.getRow(2), 'FFE8F1FA', null, colCount);
+    styleColumnHeader(ws.getRow(dataStartRow - 1), colCount);
+    rows.forEach((r, i) => {
+      const xlRow = dataStartRow + i;
+      const row = ws.getRow(xlRow);
+      const qty = numField(r, 'Qty Ordered');
+      const onHand = numField(r, 'On Hand');
+      colourItemCell(row.getCell(7), itemColourText(r));
+      if (r._lastTranDate) {
+        row.getCell(10).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: FILL_ORANGE } };
+        if (jobNumberCol && r._vNumber) {
+          row.getCell(jobNumberCol).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: FILL_ORANGE } };
+        }
+      }
+      if (qty > 0 && onHand === qty) {
+        row.getCell(12).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: FILL_GREEN } };
+        row.getCell(13).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: FILL_GREEN } };
+      } else if (isPastDue(r._dueDate, today)) {
+        row.getCell(12).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: FILL_RED } };
+      }
+    });
+  }
+
+  function styleSimpleItemRows(ws, rows, dataStartRow) {
+    styleColumnHeader(ws.getRow(dataStartRow - 1), ws.columnCount || 17);
+    rows.forEach((r, i) => colourItemCell(ws.getRow(dataStartRow + i).getCell(7), itemColourText(r)));
+  }
+
+  function stylePuRows(ws, rows, dataStartRow) {
+    styleColumnHeader(ws.getRow(dataStartRow - 1), 25);
+    ws.eachRow(row => {
+      row.height = 24;
+      row.eachCell({ includeEmpty: false }, cell => {
+        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        cell.border = cellBorder();
+      });
+    });
+    rows.forEach((r, i) => {
+      const row = ws.getRow(dataStartRow + i);
+      colourItemCell(row.getCell(7), itemColourText(r));
+      if (r._lastTranDate && r._vNumber) {
+        row.getCell(23).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: FILL_ORANGE } };
+      }
+    });
+  }
+
+  function styleStrOutSheet(ws, strOutRows) {
+    styleFullRow(ws.getRow(1), 'FFD9EAF7', null, 16);
+    let rowNumber = 2;
+    for (const section of ['TUBES', 'RODS', 'PLATES']) {
+      const rows = strOutRows[section] || [];
+      styleFullRow(ws.getRow(rowNumber), 'FF44546A', 'FFFFFFFF', 16);
+      rowNumber++;
+      styleColumnHeader(ws.getRow(rowNumber), 16);
+      rowNumber++;
+      for (const r of rows) {
+        const row = ws.getRow(rowNumber);
+        const qty = numField(r, 'Qty Ordered');
+        const onHand = numField(r, 'On Hand');
+        colourItemCell(row.getCell(7), itemColourText(r));
+        if (r._lastTranDate) {
+          row.getCell(10).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: FILL_ORANGE } };
+          if (r._vNumber) {
+            row.getCell(14).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: FILL_ORANGE } };
+          }
+        }
+        if (qty > 0 && onHand === qty) {
+          row.getCell(12).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: FILL_GREEN } };
+          row.getCell(13).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: FILL_GREEN } };
+        } else if (isPastDue(r._dueDate, today)) {
+          row.getCell(12).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: FILL_RED } };
+        }
+        rowNumber++;
+      }
+      rowNumber++;
+    }
+  }
+
+  const stdCols    = [18, 12, 6, 12, 32, 8, 18, 38, 38, 10, 12, 11, 8, 10, 20, 10, 20];
+  const tubesCols  = [18, 12, 6, 12, 32, 8, 18, 38, 38, 10, 12, 11, 8, 12];
+  const orderCols  = [18, 12, 6, 12, 32, 8, 18, 38, 38, 10, 12, 11, 8, 12];
+  const strOutCols = [18, 12, 6, 12, 32, 8, 18, 38, 38, 10, 12, 11, 8, 12, 10, 20];
+  const puCols     = [14, 16, 9, 16, 32, 5, 18, 40, 34, 12, 12, 10, 10, 16, 14, 12, 16, 24, 28, 10, 18, 16, 18, 12, 5];
+
+  let ws = appendSheet('TUBES',    buildOrderSheet_TUBES(buckets.TUBES, reportDate, dayLbl), tubesCols);
+  styleOrderRows(ws, buckets.TUBES, 5, 14, 14);
+  ws = appendSheet('RODS',         buildOrderSheet_GENERIC('RODS',   buckets.RODS,   reportDate, dayLbl), orderCols);
+  styleOrderRows(ws, buckets.RODS, 5, 14, 14);
+  ws = appendSheet('PLATES',       buildOrderSheet_GENERIC('PLATES', buckets.PLATES, reportDate, dayLbl), orderCols);
+  styleOrderRows(ws, buckets.PLATES, 5, 14, 14);
+  ws = appendSheet('CHOCKS',       buildSheet_CHOCKS(buckets.CHOCKS, reportDate, dayLbl), orderCols);
+  styleOrderRows(ws, buckets.CHOCKS, 5, 14, 14);
+  ws = appendSheet('STR-OUT',      buildSheet_STROUT(strOut, reportDate, dayLbl), strOutCols);
+  styleStrOutSheet(ws, strOut);
+  ws = appendSheet('PU',           buildSheet_PU(buckets.PU), puCols);
+  stylePuRows(ws, buckets.PU, 2);
+  ws = appendSheet('CHEMICALS',    buildSheet_CHEMICALS(buckets.CHEMICALS));
+  styleSimpleItemRows(ws, buckets.CHEMICALS, 2);
+  appendSheet('Birds Eye View',      buildSheet_BirdsEye());
+  appendSheet('Birds Eye View (PU)', buildSheet_BirdsEyePU());
+
+  return wb;
+}
+
+// ============================================================================
+// UI wiring
+// ============================================================================
+async function handleOrderbookUpload(file) {
+  try {
+    log(`Reading ${file.name}...`, 'info');
+    state.orderBook = await parseOrderBook(file);
+    document.getElementById('name-orderbook').textContent = file.name;
+    const statusEl = document.getElementById('status-orderbook');
+    statusEl.className = 'upload-status ok';
+    statusEl.innerHTML = `<span class="dot"></span><span>${state.orderBook.length} rows loaded</span>`;
+    document.getElementById('card-orderbook').classList.add('loaded');
+    log(`Order book parsed: ${state.orderBook.length} rows`, 'ok');
+    refreshButtons();
+  } catch (e) {
+    log(`Order book parse failed: ${e.message}`, 'err');
+    const statusEl = document.getElementById('status-orderbook');
+    statusEl.className = 'upload-status err';
+    statusEl.innerHTML = `<span class="dot"></span><span>${e.message}</span>`;
+  }
+}
+
+async function handleJobsUpload(file) {
+  try {
+    log(`Reading ${file.name}...`, 'info');
+    state.jobs = await parseJobOrders(file);
+    document.getElementById('name-jobs').textContent = file.name;
+    const statusEl = document.getElementById('status-jobs');
+    statusEl.className = 'upload-status ok';
+    statusEl.innerHTML = `<span class="dot"></span><span>${state.jobs.length} jobs loaded</span>`;
+    document.getElementById('card-jobs').classList.add('loaded');
+    log(`Job orders parsed: ${state.jobs.length} jobs`, 'ok');
+    refreshButtons();
+  } catch (e) {
+    log(`Jobs parse failed: ${e.message}`, 'err');
+    const statusEl = document.getElementById('status-jobs');
+    statusEl.className = 'upload-status err';
+    statusEl.innerHTML = `<span class="dot"></span><span>${e.message}</span>`;
+  }
+}
+
+function refreshButtons() {
+  const ready = state.orderBook && state.jobs;
+  document.getElementById('btn-generate').disabled = !ready;
+  document.getElementById('btn-preview').disabled = !ready;
+}
+
+function getOpts() {
+  return {
+    reportDate: document.getElementById('report-date').value || new Date().toISOString().slice(0, 10),
+    windowDays: +document.getElementById('window-days').value || 14,
+    dayLabel: document.getElementById('day-label').value,
+  };
+}
+
+function previewCounts() {
+  try {
+    const opts = getOpts();
+    const report = buildReport(state.orderBook, state.jobs, opts);
+    const b = report.buckets;
+    document.getElementById('preview').style.display = 'grid';
+    document.getElementById('m-tubes').textContent    = b.TUBES.length;
+    document.getElementById('m-rods').textContent     = b.RODS.length;
+    document.getElementById('m-plates').textContent   = b.PLATES.length;
+    document.getElementById('m-strout').textContent   = (report.strOut.TUBES.length + report.strOut.RODS.length + report.strOut.PLATES.length);
+    document.getElementById('m-pu').textContent       = b.PU.length;
+    document.getElementById('m-chemicals').textContent = b.CHEMICALS.length;
+    document.getElementById('m-chocks').textContent   = 0;
+    const total = b.TUBES.length + b.RODS.length + b.PLATES.length + b.PU.length + b.CHEMICALS.length;
+    document.getElementById('m-total').textContent = total;
+    log(`Preview ready: ${total} order lines categorised`, 'ok');
+    if (b.OTHER.length) log(`Note: ${b.OTHER.length} rows did not match any category (skipped)`, 'info');
+  } catch (e) {
+    log(`Preview failed: ${e.message}`, 'err');
+    console.error(e);
+  }
+}
+
+async function generateWorkbook() {
+  try {
+    const opts = getOpts();
+    log('Generating workbook...', 'info');
+    const report = buildReport(state.orderBook, state.jobs, opts);
+    const wb = buildWorkbook(report, opts);
+    const filename = `2_WEEK_ORDER_BOOK_OUTSTANDING_${opts.reportDate.replace(/-/g, '')}.xlsx`;
+    const buf = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    log(`✔ Downloaded: ${filename}`, 'ok');
+  } catch (e) {
+    log(`Generation failed: ${e.message}`, 'err');
+    console.error(e);
+  }
+}
+
+document.getElementById('file-orderbook').addEventListener('change', e => {
+  if (e.target.files[0]) handleOrderbookUpload(e.target.files[0]);
+});
+document.getElementById('file-jobs').addEventListener('change', e => {
+  if (e.target.files[0]) handleJobsUpload(e.target.files[0]);
+});
+document.getElementById('btn-preview').addEventListener('click', previewCounts);
+document.getElementById('btn-generate').addEventListener('click', generateWorkbook);
+
+setReportDateDefault();
+log('Ready. Upload both source files to begin.', 'info');
+</script>
+</body>
+</html>
